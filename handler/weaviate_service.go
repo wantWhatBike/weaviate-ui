@@ -56,7 +56,8 @@ func ClassHandler(wClient *client.Client) gin.HandlerFunc {
 		}
 		_ = c.ShouldBindJSON(&req)
 		if len(req.Properties) == 0 {
-			req.Properties = []string{"id"}
+			c.JSON(http.StatusBadRequest, gin.H{"error": "body params properties cannot by empty"})
+			return
 		}
 
 		// 构建 GraphQL 查询
@@ -81,25 +82,40 @@ func ClassHandler(wClient *client.Client) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		if len(resp.Errors) > 0 {
+			var errMsg string
+			for _, e := range resp.Errors {
+				errMsg += e.Message
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+			return
+		}
 
 		// 统计 count
 		agg, err := wClient.GraphQL().Aggregate().
 			WithClassName(className).
 			WithTenant(tenant).
-			WithFields(graphql.Field{Name: "meta"}).
+			WithFields(graphql.Field{Name: "meta", Fields: []graphql.Field{{Name: "count"}}}).
 			Do(context.Background())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		if len(agg.Errors) > 0 {
+			var errMsg string
+			for _, e := range resp.Errors {
+				errMsg += e.Message
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+			return
+		}
 
 		// 返回数据
-		data := make(map[string]interface{})
+		data := make([]map[string]interface{}, 0)
 		if getData, ok := resp.Data["Get"].(map[string]interface{}); ok {
-			if classData, ok := getData[className].(map[string]interface{}); ok {
-				data = classData
-				if additional, ok := data["_additional"].(map[string]interface{}); ok {
-					data["id"] = additional["id"] // 确保包含id字段
+			if classData, ok := getData[className].([]interface{}); ok {
+				for _, cd := range classData {
+					data = append(data, cd.(map[string]interface{}))
 				}
 			}
 		}
