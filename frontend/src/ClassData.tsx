@@ -11,8 +11,8 @@ export default function ({pathname, propties}: any) {
     useEffect(() => {
 
             getClass(pathname, 0, 20, keyword, propertyNames).then(({data, count}) => {
-                setClzData(data)
-                setTotal(count)
+                setClzData(Array.isArray(data) ? data : [data])
+                setTotal(count || 0)
             })
         }
         , [pathname, keyword]
