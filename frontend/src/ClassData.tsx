@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useRef, useState, useMemo} from "react";
 import {getClassData} from "./services/api";
 import {ActionType, ProTable} from "@ant-design/pro-components";
 import { message } from 'antd';
@@ -11,7 +11,7 @@ interface ClassDataProps {
 
 export default function ClassData({pathname, tenant, propties}: ClassDataProps) {
     const className = pathname.split('/class/')[1];
-    const propertyNames = propties.map(x => x.name);
+    const propertyNames = useMemo(() => propties.map(x => x.name), [propties]);
     const [keyword, setKeyword] = useState("none");
     const [clzData, setClzData] = useState([]);
     const [total, setTotal] = useState(0);
@@ -25,7 +25,7 @@ export default function ClassData({pathname, tenant, propties}: ClassDataProps) 
 
         const fetchData = async () => {
             try {
-                const data = await getClassData(className, tenant, 0, 20, keyword);
+                const data = await getClassData(className, tenant, 0, 20, keyword, propertyNames);
                 const dataArray = Array.isArray(data.data) ? data.data : 
                                 (data.data && Object.keys(data.data).length > 0 ? [data.data] : []);
                 setClzData(dataArray);
@@ -37,7 +37,7 @@ export default function ClassData({pathname, tenant, propties}: ClassDataProps) 
         };
 
         fetchData();
-    }, [className, tenant, keyword]);
+    }, [className, tenant, keyword, propertyNames]);
 
     const columns = [
         {
@@ -55,27 +55,7 @@ export default function ClassData({pathname, tenant, propties}: ClassDataProps) 
         if (!Array.isArray(rawData) || rawData.length === 0) {
             return [];
         }
-        return rawData.map((clz: any) => {
-            // Handle case where clz might be null or undefined
-            if (!clz || !clz._additional) {
-                return {
-                    key: Math.random(),
-                    index: 'N/A',
-                    ...propertyNames.reduce((acc, prop) => ({
-                        ...acc,
-                        [prop]: 'N/A'
-                    }), {})
-                };
-            }
-            return {
-                ...propertyNames.reduce((acc, prop) => ({
-                    ...acc,
-                    [prop]: clz[prop] || 'N/A'
-                }), {}),
-                index: clz['_additional']['id'] || 'N/A',
-                key: Math.random()
-            };
-        });
+        return rawData;
     };
 
     const ref = useRef<ActionType>();
@@ -93,7 +73,8 @@ export default function ClassData({pathname, tenant, propties}: ClassDataProps) 
                             tenant,
                             (params.current - 1) * params.pageSize,
                             params.pageSize,
-                            keyword
+                            keyword,
+                            propertyNames
                         );
                         
                         const dataArray = Array.isArray(response.data) ? response.data : 

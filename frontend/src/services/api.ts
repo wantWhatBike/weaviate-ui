@@ -77,12 +77,12 @@ export async function getTenants(className: string) {
     }
 }
 
-export const getClassData = async (className: string, tenant: string, offset: number, limit: number, keyword: string) => {
-    console.log('getClassData called with:', { className, tenant, offset, limit, keyword });
+export const getClassData = async (className: string, tenant: string, offset: number, limit: number, keyword: string, properties: string[]) => {
+    console.log('getClassData called with:', { className, tenant, offset, limit, keyword, properties });
     const url = `/class/${className}/tenant/${tenant}/${offset}/${limit}/${keyword}`;
     console.log('API URL:', `${api.defaults.baseURL}${url}`);
     try {
-        const response = await api.post(url);
+        const response = await api.post(url, { properties });
         console.log('getClassData response:', response);
         return response.data;
     } catch (error) {
