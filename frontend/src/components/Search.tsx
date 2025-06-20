@@ -61,16 +61,15 @@ export const Search = () => {
     <Card>
       <Form form={form} onFinish={handleSearch}>
         <Space style={{ marginBottom: 16 }}>
-          <TenantSelector
-            value={tenant}
-            onChange={setTenant}
-            className="w-[200px]"
-          />
           <ClassSelector
-            tenant={tenant || ''}
             value={className}
             onChange={setClassName}
             className="w-[200px]"
+          />
+          <TenantSelector
+              value={tenant}
+              onChange={setTenant}
+              className="w-[200px]"
           />
           <Form.Item name="keyword" noStyle>
             <Input.Search

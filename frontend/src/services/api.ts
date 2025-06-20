@@ -1,16 +1,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:7777',
 });
 
 export interface Tenant {
-  id: string;
   name: string;
-  host: string;
-  apiKey: string;
-  scheme: string;
-  disabled: boolean;
+  activityStatus: string;
 }
 
 export interface SearchParams {
@@ -37,31 +33,60 @@ export interface SearchResult {
   count: number;
 }
 
-// 租户管理
-export const getTenants = () => api.get<Tenant[]>('/tenants');
-export const addTenant = (tenant: Tenant) => api.post<Tenant>('/tenants', tenant);
-
 // Schema 管理
-export const getSchema = (tenant: string) => api.get(`/schema/${tenant}`);
-export const getClassProperties = (tenant: string, className: string) => 
-  api.get<string[]>(`/class/${tenant}/${className}/properties`);
-export const getClassTenants = (className: string) => 
-  api.get<string[]>(`/class/${className}/tenants`);
+export const getSchema = () => api.get(`/schema`).then(res=>res.data);
+
+// class tenants
+export const getClassTenants = (className: string) =>
+  api.get<Tenant[]>(`/class/${className}/tenants`);
 
 // 数据查询
 export const search = (tenant: string, params: SearchParams) => 
   api.post<SearchResult>(`/search/${tenant}`, params);
 
 // 兼容旧版查询
-export const queryClass = (
-  tenant: string,
+export const getClass = (
   className: string,
+  tenant: string,
   offset: number,
   limit: number,
   keyword: string,
   properties: string[]
 ) =>
   api.post<SearchResult>(
-    `/class/${tenant}/${className}/${offset}/${limit}/${keyword}`,
+    `/class/${className}/${tenant}/${offset}/${limit}/${keyword}`,
     properties
-  ); 
+  );
+
+export async function getTenants(className: string) {
+    console.log('getTenants called with className:', className);
+    const url = `/tenants/${className}`;
+    console.log('API URL:', `${api.defaults.baseURL}${url}`);
+    try {
+        const response = await api.get(url, {
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        console.log('getTenants response:', response);
+        return response.data;
+    } catch (error) {
+        console.error('getTenants error:', error);
+        throw error;
+    }
+}
+
+export const getClassData = async (className: string, tenant: string, offset: number, limit: number, keyword: string) => {
+    console.log('getClassData called with:', { className, tenant, offset, limit, keyword });
+    const url = `/class/${className}/tenant/${tenant}/${offset}/${limit}/${keyword}`;
+    console.log('API URL:', `${api.defaults.baseURL}${url}`);
+    try {
+        const response = await api.post(url);
+        console.log('getClassData response:', response);
+        return response.data;
+    } catch (error) {
+        console.error('getClassData error:', error);
+        throw error;
+    }
+};

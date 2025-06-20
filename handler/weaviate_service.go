@@ -47,7 +47,7 @@ func SchemaHandler(wClient *client.Client) gin.HandlerFunc {
 func ClassHandler(wClient *client.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		className := c.Param("class_name")
-		tenant := c.DefaultQuery("tenant", "")
+		tenant := c.Param("tenant")
 		offset, _ := strconv.Atoi(c.Param("offset"))
 		limit, _ := strconv.Atoi(c.Param("limit"))
 		keyword := c.Param("keyword")

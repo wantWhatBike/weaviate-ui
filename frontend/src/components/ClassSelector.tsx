@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { getSchema } from '../services/api';
 
 interface ClassSelectorProps {
-  tenant: string;
   value?: string;
   onChange?: (value: string) => void;
   className?: string;
@@ -14,21 +13,19 @@ interface SchemaClass {
   description?: string;
 }
 
-export const ClassSelector = ({ tenant, value, onChange, className }: ClassSelectorProps) => {
+export const ClassSelector = ({  value, onChange, className }: ClassSelectorProps) => {
   const [classes, setClasses] = useState<SchemaClass[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadClasses = async () => {
-      if (!tenant) return;
-      
       setLoading(true);
       try {
-        const { data } = await getSchema(tenant);
-        setClasses(data);
+        const schemas = await getSchema();
+        setClasses(schemas.classes || []);
         // 如果没有选中的类,默认选择第一个
-        if (!value && data.length > 0) {
-          onChange?.(data[0].class);
+        if (!value && schemas.classes.length > 0) {
+          onChange?.(schemas.classes[0].class);
         }
       } catch (error) {
         console.error('Failed to load classes:', error);
@@ -38,7 +35,7 @@ export const ClassSelector = ({ tenant, value, onChange, className }: ClassSelec
     };
 
     loadClasses();
-  }, [tenant]);
+  }, []); // 移除 tenant 依赖，因为 schema 获取不依赖于 tenant
 
   return (
     <Select

@@ -1,96 +1,135 @@
 import React, {useEffect, useRef, useState} from "react";
-import {getClass} from "./api.ts";
+import {getClassData} from "./services/api";
 import {ActionType, ProTable} from "@ant-design/pro-components";
+import { message } from 'antd';
 
-export default function ({pathname, propties}: any) {
-    let propertyNames = propties.map(x => x.name);
-    const [keyword, setKeyword] = useState("none")
-    const [clzData, setClzData] = useState([])
-    const [total, setTotal] = useState(0)
+interface ClassDataProps {
+    pathname: string;
+    tenant: string;
+    propties: Array<{name: string}>;
+}
+
+export default function ClassData({pathname, tenant, propties}: ClassDataProps) {
+    const className = pathname.split('/class/')[1];
+    const propertyNames = propties.map(x => x.name);
+    const [keyword, setKeyword] = useState("none");
+    const [clzData, setClzData] = useState([]);
+    const [total, setTotal] = useState(0);
 
     useEffect(() => {
-
-            getClass(pathname, 0, 20, keyword, propertyNames).then(({data, count}) => {
-                setClzData(Array.isArray(data) ? data : [data])
-                setTotal(count || 0)
-            })
+        if (!tenant) {
+            console.error('Tenant is undefined');
+            message.error('Tenant information is missing');
+            return;
         }
-        , [pathname, keyword]
-    )
-    let columns = [];
-    columns.push({
-        title: 'Id',
-        dataIndex: 'index',
-        width: 48,
-    },)
 
-    propties.forEach((proptie: any) => {
-        columns.push({
-            title: proptie.name,
-            dataIndex: proptie.name,
-        })
-    });
+        const fetchData = async () => {
+            try {
+                const data = await getClassData(className, tenant, 0, 20, keyword);
+                const dataArray = Array.isArray(data.data) ? data.data : 
+                                (data.data && Object.keys(data.data).length > 0 ? [data.data] : []);
+                setClzData(dataArray);
+                setTotal(data.count || 0);
+            } catch (error) {
+                console.error('Error fetching class data:', error);
+                message.error('Failed to fetch class data');
+            }
+        };
 
-    let data = clzData.map((clz: any) => {
-        let res = {};
-        propertyNames.forEach((proptie: any) => {
-            res[proptie] = clz[proptie];
-        });
-        res['index'] = clz['_additional']['id'];
-        // set res['key'] a random value
-        res['key'] = Math.random();
-        return res;
-    });
-    const ref = useRef<ActionType>();
-    return <div>
-        <ProTable
-            actionRef={ref}
-            params={{pathname:pathname}}
-            columns={columns}
-            // dataSource={data}
-            request={async (
-                // 第一个参数 params 查询表单和 params 参数的结合
-                // 第一个参数中一定会有 pageSize 和  current ，这两个参数是 antd 的规范
-                params: any,
-                sort,
-                filter,
-            ) => {
+        fetchData();
+    }, [className, tenant, keyword]);
 
-                let clzData = await getClass(pathname, (params.current - 1) * params.pageSize, params.pageSize, keyword, propertyNames);
-                let data = clzData.data.map((clz: any) => {
-                    let res = {};
-                    propertyNames.forEach((proptie: any) => {
-                        res[proptie] = clz[proptie];
-                    });
-                    res['index'] = clz['_additional']['id'];
+    const columns = [
+        {
+            title: 'Id',
+            dataIndex: 'index',
+            width: 48,
+        },
+        ...propties.map(prop => ({
+            title: prop.name,
+            dataIndex: prop.name,
+        }))
+    ];
 
-                    // set res['key'] a random value
-                    res['key'] = Math.random();
-                    return res;
-                });
-                console.log(clzData)
+    const transformData = (rawData: any[]) => {
+        if (!Array.isArray(rawData) || rawData.length === 0) {
+            return [];
+        }
+        return rawData.map((clz: any) => {
+            // Handle case where clz might be null or undefined
+            if (!clz || !clz._additional) {
                 return {
-                    data: data,
-                    success: true,
-                    total: clzData.count,
+                    key: Math.random(),
+                    index: 'N/A',
+                    ...propertyNames.reduce((acc, prop) => ({
+                        ...acc,
+                        [prop]: 'N/A'
+                    }), {})
                 };
-            }}
-            rowKey="key"
-            dateFormatter="string"
-            toolbar={{
-                title: 'Class',
-                tooltip: '',
-                search: {
-                    onSearch: async (value: string) => {
-                        setKeyword(value)
-                        ref.current?.reload()
+            }
+            return {
+                ...propertyNames.reduce((acc, prop) => ({
+                    ...acc,
+                    [prop]: clz[prop] || 'N/A'
+                }), {}),
+                index: clz['_additional']['id'] || 'N/A',
+                key: Math.random()
+            };
+        });
+    };
 
+    const ref = useRef<ActionType>();
+
+    return (
+        <div>
+            <ProTable
+                actionRef={ref}
+                params={{pathname}}
+                columns={columns}
+                request={async (params: any) => {
+                    try {
+                        const response = await getClassData(
+                            className,
+                            tenant,
+                            (params.current - 1) * params.pageSize,
+                            params.pageSize,
+                            keyword
+                        );
+                        
+                        const dataArray = Array.isArray(response.data) ? response.data : 
+                                        (response.data && Object.keys(response.data).length > 0 ? [response.data] : []);
+                        
+                        return {
+                            data: transformData(dataArray),
+                            success: true,
+                            total: response.count || 0,
+                        };
+                    } catch (error) {
+                        console.error('Error in ProTable request:', error);
+                        message.error('Failed to fetch data');
+                        return {
+                            data: [],
+                            success: false,
+                            total: 0,
+                        };
+                    }
+                }}
+                rowKey="key"
+                dateFormatter="string"
+                toolbar={{
+                    title: 'Class',
+                    tooltip: '',
+                    search: {
+                        onSearch: (value: string) => {
+                            setKeyword(value || 'none');
+                            ref.current?.reload();
+                        },
                     },
-                },
-            }}
-            search={false}
-            toolBarRender={() => []}
-        />
-    </div>
+                }}
+                search={false}
+                toolBarRender={() => []}
+            />
+        </div>
+    );
 }
 

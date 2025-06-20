@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {getSchema} from "./api";
+import {getSchema} from "./services/api";
 import {ProColumns, ProTable} from "@ant-design/pro-components";
 import ReactJson from 'react-json-view'
 

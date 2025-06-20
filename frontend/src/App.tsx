@@ -2,14 +2,16 @@ import {PageContainer, ProLayout} from '@ant-design/pro-components';
 import {useEffect, useState} from "react";
 import Welcome from "./Welcome.tsx";
 import {BorderlessTableOutlined, CrownFilled, DashOutlined, SmileFilled, TableOutlined} from "@ant-design/icons";
-import {getSchema} from "./api.ts";
+import {getSchema} from "./services/api.ts";
 
 // import loadsh
 import _ from 'lodash';
 import ClassData from "./ClassData.tsx";
+import TenantList from "./components/TenantList.tsx";
 
 export default () => {
     const [pathname, setPathname] = useState('/');
+    const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
 
     const [routes, setRoutes] = useState({
         route: {
@@ -60,6 +62,35 @@ export default () => {
             )
         }
         , [])
+
+    const handleTenantSelect = (tenant: string) => {
+        setSelectedTenant(tenant);
+    };
+
+    const renderContent = () => {
+        if (pathname === '/' || pathname === '/schema') {
+            return <Welcome />;
+        }
+
+        const className = pathname.split('/class/')[1];
+        if (!className) return null;
+
+        // If tenant is not selected, show tenant list
+        if (!selectedTenant) {
+            return <TenantList 
+                className={className}
+                onTenantSelect={handleTenantSelect}
+            />;
+        }
+
+        // If tenant is selected, show class data
+        return <ClassData 
+            pathname={pathname} 
+            tenant={selectedTenant} 
+            propties={class2props[pathname]}
+        />;
+    };
+
     return (
         <div
             style={{
@@ -71,6 +102,7 @@ export default () => {
                     <div
                         onClick={() => {
                             setPathname(item.path || '/welcome');
+                            setSelectedTenant(null); // Reset selected tenant when changing class
                         }} style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -116,10 +148,7 @@ export default () => {
                 }}
             >
                 <PageContainer>
-                    {
-                        pathname === '/' || pathname === '/schema' ? <Welcome></Welcome> :
-                            <ClassData pathname={pathname} propties={class2props[pathname]}></ClassData>
-                    }
+                    {renderContent()}
                 </PageContainer>
             </ProLayout>
         </div>
